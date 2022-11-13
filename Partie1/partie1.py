@@ -1,121 +1,183 @@
 import cv2 as cv
 import numpy as np
-
-
-
-def EncodeText(Text: str) -> str:
-
-    txt_binaire = ""
-    for let in Text:
-        ascii_rep = ord(let) #recupere la representation ascii 
-        bin_rep = bin(ascii_rep) #transformer en binaire
-        bin_rep = bin_rep [2:] #enlever '0b' au debur
-
-        while len(bin_rep) < 8 : #pour avoir a la fin chaque lettre sur 1 octet
-            bin_rep = "0" + bin_rep   
-
-        txt_binaire += bin_rep
-
-    #calculer la taille qui va etre representée sur 2 octets (16 bits)
-    taille_bin = bin(len(txt_binaire))
-    taille_bin = taille_bin[2:]
-    while len(taille_bin) < 16 :
-        taille_bin = "0" + taille_bin
-    return txt_binaire + taille_bin 
+from PIL import Image
+from scipy import ndimage
 
 def InsertText(Text : str, imgBShape):
-    
+
     font = cv.FONT_HERSHEY_SIMPLEX
-    org = (50, 150)
+    org = (0, 50)
     fontScale = 2
     color = (0, 0, 0)
     thickness = 3
     txt_binaire = ""
     taille_bin = ""
 
-    image = np.ones(imgBShape, dtype=np.uint8)
+    image = np.ones(imgBShape, dtype = np.uint8)
+    image[:] = [255,255,255]
+    image = cv.cvtColor(image,cv.COLOR_BGR2GRAY)
+
+    image = cv.putText(image, Text, org, font, fontScale, color, thickness, cv.LINE_AA)
+
+    d1,d2 = image.shape
+
+    for x in range(d1):
+        for y in range(d2):
+
+            bin_rep = bin(image[x,y]) 
+            bin_rep = bin_rep [2:] 
+
+            while len(bin_rep) < 8 : 
+                bin_rep = "0" + bin_rep   
+            
+            txt_binaire = bin_rep + txt_binaire
     
-    # Using cv2.putText() method
-    image = cv.putText(image, 'OpenCV', org, font, 
-                    fontScale, color, thickness, cv.LINE_AA)
+    shape_x,shape_y = bin(image.shape[0])[2:],bin(image.shape[1])[2:]
 
-    imgB = cv.cvtColor(image,cv.COLOR_BGR2GRAY)
+    taille_bin = bin(len(txt_binaire))[2:]
 
-    for y in range(image.shape[0]):
-        for x in range(image.shape[1]):
-            bin_rep = bin(imgB[x,y]) #transformer en binaire
-            bin_rep = bin_rep [2:] #enlever '0b' au debur
+    while len(shape_x) < 12:
+        shape_x = "0" + shape_x
 
-        while len(bin_rep) < 8 : #pour avoir a la fin chaque lettre sur 1 octet
-            bin_rep = "0" + bin_rep   
+    while len(shape_y) < 12:
+        shape_y = "0" + shape_y
 
-        txt_binaire += bin_rep
-    
-    #calculer la taille qui va etre representée sur 2 octets (16 bits)
-    taille_bin = bin(len(txt_binaire))
-    taille_bin = taille_bin[2:]
-    while len(taille_bin) < 16 :
-        taille_bin = "0" + taille_bin
-    return txt_binaire + taille_bin 
+    return txt_binaire + shape_x + shape_y 
 
 
-
-
-
-def Encode(text, ImagePath):
+def Encode(text, ImagePath): 
 
     image = cv.imread(ImagePath, cv.IMREAD_COLOR)
 
-    img_ycbcr = cv.cvtColor(image, cv.COLOR_BGR2YCR_CB)
+    img_ycrcb = cv.cvtColor(image, cv.COLOR_BGR2YCR_CB)
 
-    codage = InsertText(text, ImagePath)
+    codage = InsertText(text, (150,300,3))
 
-    d1,d2,d3 = img_ycbcr.shape 
-    index = 0 
+    d1,d2,d3 = img_ycrcb.shape 
+
+    index = 1
+
+
+    lc = len(codage)
     for y in range(d1) : 
         for x in range(d2):
             for z in range(d3-1):
 
-                px = img_ycbcr[x,y,z+1]
-                bin_ = list(bin(px))[2:]
-
-                bin_[4] = codage[index]
+                bin_ = list(bin(img_ycrcb[y,x,z+1])[2:])
                 
-                index += 1
-                bin_[5] = codage[index]
+                l = len(bin_)
+
+                bin_[l-1], bin_[l-2], bin_[l-3], bin_[l-4] = "1","1","1","0"
+
+                bin_[l-5] = codage[lc-index]
 
                 index += 1
-                img_ycbcr[x,y,z+1] = int("".join(bin_),2)
 
-                if len(codage) <= index :
+                img_ycrcb[y,x,z+1] = int("".join(bin_),2)
+
+                if len(codage) == index :
                     break
-            if len(codage) <= index :
-                    break
-        if len(codage) <= index :
-                    break
+            if len(codage) == index :
+                break
+        if len(codage) == index :
+            break
+    FinalImage = cv.cvtColor(img_ycrcb, cv.COLOR_YCR_CB2BGR)
+    cv.imwrite("imageAapresEncode.png",FinalImage)
+    return FinalImage
 
-    return cv.cvtColor(img_ycbcr, cv.COLOR_YCR_CB2BGR)
+def DecodeText(ImagePath):
+
+    cpt,taille = 0, 0
+    t_bin, codage,shape_x,shape_y = "", "","", ""
+
+    imageA = cv.imread(ImagePath, cv.IMREAD_COLOR)
+    img_ycbcr = cv.cvtColor(imageA, cv.COLOR_BGR2YCR_CB)
+
+    calc_taille, fin =True, False
+
+    d1,d2,d3 = img_ycbcr.shape
+
+    for y in range(d1):
+        for x in range(d2):
+            for z in range(d3-1):
+
+                if calc_taille == True:
+                    if cpt != 24:
+                        rep_bin = list(bin(img_ycbcr[y,x,z+1])[2:]) 
+                        l = len(rep_bin)
+                        t_bin=   f"{rep_bin[l-5]}" + t_bin
+                        cpt+=1
+                    else:
+                        #taille = int(t_bin,2)
+                        shape_x = int(t_bin[:12],2)
+                        shape_y = int(t_bin[12:],2)
+                        taille = shape_x * shape_y * 8
+                        calc_taille = False
+                        cpt = 0
+                else:
+                    if cpt != taille:
+                        rep_bin = list(bin(img_ycbcr[y,x,z+1])[2:]) 
+                        l = len(rep_bin)
+                        codage = f"{rep_bin[l-5]}" +codage
+                        cpt+=1
+                    else:
+                        break
+            if fin:
+                break
+        if fin:
+            break
+
+    return codage, shape_x,shape_y
 
 
-def DecodeText(Txt_Binaire : str ) -> str :
-    return None
+def ConstructionImage(codage,shape_x,shape_y):
+    
+    data = np.ones((shape_x,shape_y), dtype=np.uint8)
+    data[:,:] = 255
+    cpt1,cpt2,px_dic,i = 0,0,0,0
+    px_bin= ""
+    stop = False
 
+    while i < (len(codage)) and not stop:
 
-print(EncodeText("Hello"))
+        px_bin = codage[len(codage) - (i+1)] + px_bin
 
+        if (i+1) % 8 == 0:
+            px_dic = int(px_bin,2)
+            px_bin = ""
+            
+            data[cpt1,cpt2] = px_dic
 
-image = cv.imread("img.jpg",cv.IMREAD_COLOR)
+            cpt2+=1
 
-img2 = cv.cvtColor(image, cv.COLOR_BGR2YCR_CB)
+            if cpt2 == (shape_y - 1):
+                cpt1 += 1
+                cpt2 = 0
+                if cpt1 == (shape_x-1 ):
+                    stop = True
+        i+=1
+    
+    image = Image.fromarray(data, 'L')    
+    image.save("ImgBavantdilatation.png")
+    img = cv.imread("ImgBavantdilatation.png",cv.IMREAD_COLOR)
+    img = cv.cvtColor(img,cv.COLOR_BGR2GRAY)
+    img = img < 200
 
-print(img2.shape)
+    #application de la dilatation
+    open_x = ndimage.binary_opening(img)
+    
+    finalImage = np.zeros(open_x.shape, np.uint8)
 
-print(img2[:,:,0].min())
+    for x in range(open_x.shape[0]):
+        for y in range(open_x.shape[1]):
+            if open_x[x,y] == False:
+                finalImage[x,y] = 255
+            else:
+                finalImage[x,y] = 0
+    
+    Fimage = Image.fromarray(finalImage,'L')
 
-"""
-cv.imshow("GRAY2",img2)
-cv.waitKey(0)
-cv.destroyAllWindows()
-"""
+    Fimage.save("FinalImage.png")
 
-#Encode("Hello","img.jpg")
+    return cv.imread("FinalImage.png")
+
