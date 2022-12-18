@@ -13,7 +13,7 @@ cap.set(cv.CAP_PROP_FPS, 1200)
 
 
 #tracker = cv.legacy.TrackerMOSSE_create()
-tracker = cv.legacy.TrackerCSRT_create()
+tracker = cv.TrackerCSRT_create()
 ret, frame = cap.read()
 cv.flip(frame,1,frame)
 rectangle = cv.selectROI("Tracking", frame, False)
@@ -45,29 +45,3 @@ while True:
 cap.release()
 cv.destroyAllWindows()
 
-
-
-
-
-
-
-"""
-def getmin(a,b,c):
-    if(a<b):
-        if(a<c):
-            print(a)
-        else:
-            print(c)
-    else:
-        if(b<c):
-            print(b)
-        else:
-            print(c)
-    
-    return 0 
-
-
-
-
-
-"""

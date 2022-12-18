@@ -1,0 +1,4 @@
+pygame
+opencv-contrib-python
+numpy
+opencv-python

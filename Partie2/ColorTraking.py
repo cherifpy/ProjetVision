@@ -3,12 +3,7 @@ import numpy as np
 
 
 def detect_inrange(image, surfaceMin, surfaceMax,):
-    a = 0
-    b = 0
-    c = 255
 
-    lo = np.array([95,100,50])
-    hi = np.array([120,255,200])
     points=[]
     image = cv.cvtColor(image, cv.COLOR_BGR2HSV)
     image = cv.blur(image, (5,5))
@@ -32,29 +27,40 @@ def detect_inrange(image, surfaceMin, surfaceMax,):
     
     return image, mask, points
 
+capteur = cv.VideoCapture(0)
 
-def ColorTraking(capteur):
+
+a = 0
+b = 0
+c = 255
+
+lo = np.array([95,100,50])
+hi = np.array([120,255,200])
+
+perdu = 100
+
+while True:
 
     ret, frame = capteur.read()
-    
-    #frame = cv2.resize(frame,(600,600))
+
     cv.flip(frame, 1, frame)
     hsv_frame = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
-    cv.circle(frame, (150,150), 20, (0,255,0), 5)
     img, mask, points = detect_inrange(frame, 1500, 4000)
     #print(img[100,100])
-    #for point in points[0:1]:
     if len(points)>0:
         cv.circle(frame, points[0][0], points[0][1], (0,0,255), 3)
+        #affichage des coordonée
         cv.putText(frame, "X = ",(0,30), cv.FONT_HERSHEY_COMPLEX, 0.7,(0,255,0),1)
-        cv.putText(frame, str(int(points[0][1])),(40,30), cv.FONT_HERSHEY_COMPLEX, 0.7,(0,255,0),1)
+        cv.putText(frame, str(int(points[0][0][0])),(40,30), cv.FONT_HERSHEY_COMPLEX, 0.7,(0,255,0),1)
         cv.putText(frame, "Y = ",(100,30), cv.FONT_HERSHEY_COMPLEX, 0.7,(0,255,0),1)
-        cv.putText(frame, str((points[0][0])),(140,30), cv.FONT_HERSHEY_COMPLEX, 0.7,(0,255,0),1)    
-        
+        cv.putText(frame, str(int(points[0][0][1])),(140,30), cv.FONT_HERSHEY_COMPLEX, 0.7,(0,255,0),1)  
+        #print(points[0][0])
     cv.imshow("mask", mask)
     cv.imshow("bgr img", frame)
     #cv2.imshow("hsv mask", output_hsv)
 
-    return points
+    car = cv.waitKey(10)
+    if car == ord("0"):
+        break
 
         

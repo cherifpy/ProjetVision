@@ -1,6 +1,5 @@
 import pygame
 from .player import Player
-from .monster import Monstre
 from .comet import Comet
 import random 
 
@@ -10,14 +9,9 @@ class game:
         self.tt_player   = pygame.sprite.Group()
         self.player1     = Player(self)
         self.touches     = {}
-        self.monstre1    = Monstre(self,self.player1)
-        self.tt_monsters = pygame.sprite.Group()
-        self.tt_comets   = pygame.sprite.Group() 
+        self.tt_comets   = pygame.sprite.Group()
         self.tt_player.add(self.player1)
-        
-    def cree_monstre(self):
-        monstre = Monstre(self,self.player1)
-        self.tt_monsters.add(monstre)
+
 
     def cree_comet(self):
         comet1 = Comet(self,self.tt_player)
