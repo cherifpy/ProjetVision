@@ -68,7 +68,7 @@ class Player(pygame.sprite.Sprite):
 
 
     def setPosition(self,y_):
-        self.rect.x=y_
+        self.rect.x=y_*1.5
         
 
        
